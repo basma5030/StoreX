@@ -14,5 +14,6 @@
 <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.14" />
 <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.14" />
 <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="9.0.21" />
+<PackageVersion Include="Scalar.AspNetCore" Version="2.20.0" />
   </ItemGroup>
 </Project>
