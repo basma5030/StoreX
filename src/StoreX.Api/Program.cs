@@ -6,6 +6,8 @@ using StoreX.Api.Infrastructure;
 using StoreX.Api.Infrastructure.Persistence;
 using StoreX.Api.Infrastructure.Persistence.Auditing;
 using StoreX.Api.Infrastructure.Seeding;
+using StoreX.Api.Modules.Organization.Application;
+using StoreX.Api.Modules.Organization.Endpoints;
 using StoreX.Api.Modules.Organization.Seeding;
 using StoreX.Api.Shared;
 using StoreX.Api.Infrastructure.Exceptions;
@@ -24,6 +26,7 @@ builder.Services.AddSingleton<IClock, SystemClock>();
 builder.Services.AddScoped<StoreXSeederRunner>();
 
 builder.Services.AddStoreXSeeder<OrganizationSeeder>();
+builder.Services.AddScoped<IBranchService, BranchService>();
 
 // Register application services
 builder.Services.AddOpenApi();
@@ -82,5 +85,6 @@ app.UseHttpsRedirection();
 
 // Health Check Endpoint
 app.MapHealthChecks("/health");
+app.MapBranchEndpoints();
 
 app.Run();
