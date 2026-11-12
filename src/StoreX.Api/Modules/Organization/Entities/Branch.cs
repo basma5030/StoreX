@@ -26,10 +26,10 @@ public sealed class Branch : AuditableEntity, ISoftDeletable
     }
 
     public Branch(
-        string code,
-        string name,
-        string address,
-        string? phoneNumber = null)
+    string code,
+    string name,
+    string address,
+    string? phoneNumber = null)
     {
         if (string.IsNullOrWhiteSpace(code))
             throw new ArgumentException(
@@ -43,11 +43,32 @@ public sealed class Branch : AuditableEntity, ISoftDeletable
             throw new ArgumentException(
                 "Branch address cannot be empty.", nameof(address));
 
-        Code = code.Trim();
-        Name = name.Trim();
-        Address = address.Trim();
-        PhoneNumber = string.IsNullOrWhiteSpace(phoneNumber)
+        var normalizedCode = code.Trim().ToUpperInvariant();
+        var normalizedName = name.Trim();
+        var normalizedAddress = address.Trim();
+        var normalizedPhoneNumber = string.IsNullOrWhiteSpace(phoneNumber)
             ? null
             : phoneNumber.Trim();
+
+        if (normalizedCode.Length > 20)
+            throw new ArgumentException(
+                "Branch code cannot exceed 20 characters.", nameof(code));
+
+        if (normalizedName.Length > 150)
+            throw new ArgumentException(
+                "Branch name cannot exceed 150 characters.", nameof(name));
+
+        if (normalizedAddress.Length > 300)
+            throw new ArgumentException(
+                "Branch address cannot exceed 300 characters.", nameof(address));
+
+        if (normalizedPhoneNumber?.Length > 30)
+            throw new ArgumentException(
+                "Branch phone number cannot exceed 30 characters.", nameof(phoneNumber));
+
+        Code = normalizedCode;
+        Name = normalizedName;
+        Address = normalizedAddress;
+        PhoneNumber = normalizedPhoneNumber;
     }
 }
