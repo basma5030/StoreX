@@ -11,7 +11,7 @@ public sealed class BranchConfiguration : IEntityTypeConfiguration<Branch>
         builder.ToTable("Branches", "organization");
 
         builder.HasKey(branch => branch.Id);
-builder.HasQueryFilter(branch => !branch.IsDeleted);
+
 
         builder.Property(branch => branch.Code)
             .IsRequired()
