@@ -1,6 +1,7 @@
 
 using Microsoft.EntityFrameworkCore;
 using StoreX.Api.Infrastructure.Persistence;
+using StoreX.Api.Infrastructure.Persistence.Auditing;
 using StoreX.Api.Modules.Organization.Entities;
 using StoreX.Api.Shared;
 
@@ -9,7 +10,7 @@ namespace StoreX.Tests;
 public class StoreXDbContextAuditTests
 {
     [Fact]
-    public void SaveChanges_WhenAddingBranch_ShouldSetCreationAudit()
+    public void SaveChanges_WhenAddingBranch_ShouldSetCreationAuditAndCreateAuditLog()
     {
         var userId = Guid.NewGuid();
         var clock = new TestClock(
@@ -28,10 +29,20 @@ public class StoreXDbContextAuditTests
         Assert.Equal(userId.ToString(), branch.CreatedBy);
         Assert.Null(branch.UpdatedAtUtc);
         Assert.Null(branch.UpdatedBy);
+
+        var auditLog = Assert.Single(context.AuditLogs);
+
+        Assert.Equal(nameof(Branch), auditLog.EntityName);
+        Assert.Equal(branch.Id, auditLog.EntityId);
+        Assert.Equal("Added", auditLog.Action);
+        Assert.Equal(userId, auditLog.UserId);
+        Assert.Equal(clock.UtcNow, auditLog.ChangedAtUtc);
+        Assert.Contains("Main Branch", auditLog.NewValues);
+        Assert.Null(auditLog.OldValues);
     }
 
     [Fact]
-    public void SaveChanges_WhenUpdatingBranch_ShouldSetUpdateAudit()
+    public void SaveChanges_WhenUpdatingBranch_ShouldSetUpdateAuditAndRecordChanges()
     {
         var firstUserId = Guid.NewGuid();
         var secondUserId = Guid.NewGuid();
@@ -65,10 +76,25 @@ public class StoreXDbContextAuditTests
 
         Assert.Equal(clock.UtcNow, branch.UpdatedAtUtc);
         Assert.Equal(secondUserId.ToString(), branch.UpdatedBy);
+
+        var auditLogs = context.AuditLogs
+            .OrderBy(x => x.ChangedAtUtc)
+            .ToList();
+
+        Assert.Equal(2, auditLogs.Count);
+
+        var updateLog = Assert.Single(
+            auditLogs,
+            x => x.Action == "Modified");
+
+        Assert.Equal(branch.Id, updateLog.EntityId);
+        Assert.Equal(secondUserId, updateLog.UserId);
+        Assert.Contains("Old Name", updateLog.OldValues);
+        Assert.Contains("New Name", updateLog.NewValues);
     }
 
     [Fact]
-    public void SaveChanges_WhenDeletingBranch_ShouldSoftDeleteIt()
+    public void SaveChanges_WhenDeletingBranch_ShouldSoftDeleteAndCreateAuditLog()
     {
         var userId = Guid.NewGuid();
 
@@ -99,40 +125,65 @@ public class StoreXDbContextAuditTests
             context.Branches
                 .IgnoreQueryFilters()
                 .Any(x => x.Id == branch.Id));
+
+        var auditLogs = context.AuditLogs.ToList();
+
+        Assert.Equal(2, auditLogs.Count);
+
+        var deleteLog = Assert.Single(
+            auditLogs,
+            x => x.Action == "Deleted");
+
+        Assert.Equal(branch.Id, deleteLog.EntityId);
+        Assert.Equal(userId, deleteLog.UserId);
+        Assert.Contains("IsDeleted", deleteLog.NewValues);
+        Assert.Contains("DeletedAtUtc", deleteLog.NewValues);
     }
-[Fact]
-public async Task SaveChangesAsync_WhenAddingBranch_ShouldSetCreationAudit()
-{
-    var userId = Guid.NewGuid();
 
-    var clock = new TestClock(
-        new DateTime(2026, 11, 12, 16, 0, 0, DateTimeKind.Utc));
+    [Fact]
+    public async Task SaveChangesAsync_WhenAddingBranch_ShouldSetCreationAuditAndCreateAuditLog()
+    {
+        var userId = Guid.NewGuid();
 
-    var currentUser = new TestCurrentUser(userId);
+        var clock = new TestClock(
+            new DateTime(2026, 11, 12, 16, 0, 0, DateTimeKind.Utc));
 
-    await using var context = CreateContext(clock, currentUser);
+        var currentUser = new TestCurrentUser(userId);
 
-    var branch = new Branch("BR-004", "Async Branch", "Cairo");
+        await using var context = CreateContext(clock, currentUser);
 
-    context.Branches.Add(branch);
+        var branch = new Branch("BR-004", "Async Branch", "Cairo");
 
-    await context.SaveChangesAsync();
+        context.Branches.Add(branch);
 
-    Assert.Equal(clock.UtcNow, branch.CreatedAtUtc);
-    Assert.Equal(userId.ToString(), branch.CreatedBy);
-    Assert.Null(branch.UpdatedAtUtc);
-    Assert.Null(branch.UpdatedBy);
-}
+        await context.SaveChangesAsync();
+
+        Assert.Equal(clock.UtcNow, branch.CreatedAtUtc);
+        Assert.Equal(userId.ToString(), branch.CreatedBy);
+        Assert.Null(branch.UpdatedAtUtc);
+        Assert.Null(branch.UpdatedBy);
+
+        var auditLog = Assert.Single(context.AuditLogs);
+
+        Assert.Equal("Added", auditLog.Action);
+        Assert.Equal(branch.Id, auditLog.EntityId);
+        Assert.Equal(userId, auditLog.UserId);
+    }
 
     private static StoreXDbContext CreateContext(
         TestClock clock,
         TestCurrentUser currentUser)
     {
+        var interceptor = new AuditSaveChangesInterceptor(
+            clock,
+            currentUser);
+
         var options = new DbContextOptionsBuilder<StoreXDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .AddInterceptors(interceptor)
             .Options;
 
-        return new StoreXDbContext(options, clock, currentUser);
+        return new StoreXDbContext(options);
     }
 
     private sealed class TestClock : IClock

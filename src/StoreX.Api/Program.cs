@@ -1,10 +1,10 @@
-
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Scalar.AspNetCore;
 
 using StoreX.Api.Infrastructure;
 using StoreX.Api.Infrastructure.Persistence;
+using StoreX.Api.Infrastructure.Persistence.Auditing;
 using StoreX.Api.Infrastructure.Seeding;
 using StoreX.Api.Modules.Organization.Seeding;
 using StoreX.Api.Shared;
@@ -25,14 +25,23 @@ builder.Services.AddStoreXSeeder<OrganizationSeeder>();
 // Register application services
 builder.Services.AddOpenApi();
 
+// Register Audit Infrastructure
+builder.Services.AddScoped<AuditSaveChangesInterceptor>();
+
 // Register StoreX database context
 var connectionString = builder.Configuration
     .GetConnectionString("StoreX")
     ?? throw new InvalidOperationException(
         "Connection string 'StoreX' was not found.");
 
-builder.Services.AddDbContext<StoreXDbContext>(options =>
-    options.UseSqlServer(connectionString));
+builder.Services.AddDbContext<StoreXDbContext>(
+    (serviceProvider, options) =>
+    {
+        options.UseSqlServer(connectionString);
+
+        options.AddInterceptors(
+            serviceProvider.GetRequiredService<AuditSaveChangesInterceptor>());
+    });
 
 // Register Health Checks
 builder.Services
