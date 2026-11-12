@@ -63,8 +63,14 @@ await using (var scope = app.Services.CreateAsyncScope())
     var dbContext = scope.ServiceProvider
         .GetRequiredService<StoreXDbContext>();
 
-    await dbContext.Database.MigrateAsync();
-
+    if (app.Environment.IsEnvironment("Testing"))
+    {
+        await dbContext.Database.EnsureCreatedAsync();
+    }
+    else
+    {
+        await dbContext.Database.MigrateAsync();
+    }
     var seederRunner = scope.ServiceProvider
         .GetRequiredService<StoreXSeederRunner>();
 
@@ -88,3 +94,5 @@ app.MapHealthChecks("/health");
 app.MapBranchEndpoints();
 
 app.Run();
+
+public partial class Program { }
