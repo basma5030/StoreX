@@ -1,10 +1,14 @@
 
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
+using StoreX.Api.Infrastructure;
 using StoreX.Api.Infrastructure.Persistence;
+using StoreX.Api.Shared;
 
 var builder = WebApplication.CreateBuilder(args);
-
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
+builder.Services.AddSingleton<IClock, SystemClock>();
 // Register application services
 builder.Services.AddOpenApi();
 
