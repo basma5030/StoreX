@@ -8,8 +8,11 @@ using StoreX.Api.Infrastructure.Persistence.Auditing;
 using StoreX.Api.Infrastructure.Seeding;
 using StoreX.Api.Modules.Organization.Seeding;
 using StoreX.Api.Shared;
+using StoreX.Api.Infrastructure.Exceptions;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
 
 builder.Services.AddHttpContextAccessor();
 
@@ -49,6 +52,7 @@ builder.Services
     .AddDbContextCheck<StoreXDbContext>("database");
 
 var app = builder.Build();
+app.UseExceptionHandler();
 
 // Initialize database before accepting requests.
 await using (var scope = app.Services.CreateAsyncScope())
