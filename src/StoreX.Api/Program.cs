@@ -7,6 +7,7 @@ using StoreX.Api.Infrastructure.Persistence;
 using StoreX.Api.Infrastructure.Persistence.Auditing;
 using StoreX.Api.Infrastructure.Seeding;
 using StoreX.Api.Modules.Organization.Application;
+using StoreX.Api.Modules.Organization.Contracts;
 using StoreX.Api.Modules.Organization.Endpoints;
 using StoreX.Api.Modules.Organization.Seeding;
 using StoreX.Api.Shared;
@@ -26,7 +27,11 @@ builder.Services.AddSingleton<IClock, SystemClock>();
 builder.Services.AddScoped<StoreXSeederRunner>();
 
 builder.Services.AddStoreXSeeder<OrganizationSeeder>();
-builder.Services.AddScoped<IBranchService, BranchService>();
+builder.Services.AddScoped<BranchService>();
+builder.Services.AddScoped<IBranchService>(
+    serviceProvider => serviceProvider.GetRequiredService<BranchService>());
+builder.Services.AddScoped<IBranchLookup>(
+    serviceProvider => serviceProvider.GetRequiredService<BranchService>());
 
 // Register application services
 builder.Services.AddOpenApi();

@@ -7,13 +7,33 @@ using StoreX.Api.Shared;
 
 namespace StoreX.Api.Modules.Organization.Application;
 
-public sealed class BranchService : IBranchService
+public sealed class BranchService : IBranchService, IBranchLookup
 {
     private readonly StoreXDbContext _dbContext;
 
     public BranchService(StoreXDbContext dbContext)
     {
         _dbContext = dbContext;
+    }
+
+    public async Task<BranchLookupResponse?> FindByIdAsync(
+        Guid branchId,
+        CancellationToken cancellationToken = default)
+    {
+        var branch = await _dbContext.Branches
+            .AsNoTracking()
+            .FirstOrDefaultAsync(
+                branch => branch.Id == branchId,
+                cancellationToken);
+
+        if (branch is null)
+            return null;
+
+        return new BranchLookupResponse(
+            branch.Id,
+            branch.Code,
+            branch.Name,
+            branch.IsActive);
     }
 
     public async Task<Result<BranchResponse>> CreateAsync(
