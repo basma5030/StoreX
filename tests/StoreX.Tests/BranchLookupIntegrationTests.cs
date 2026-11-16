@@ -68,6 +68,46 @@ public class BranchLookupIntegrationTests
         Assert.Null(result);
     }
 
+    [Fact]
+    public async Task FindByIdAsync_WhenBranchDoesNotExist_ShouldReturnNull()
+    {
+        using var factory = new StoreXApiFactory();
+        using var scope = factory.Services.CreateScope();
+
+        var branchLookup =
+            scope.ServiceProvider.GetRequiredService<IBranchLookup>();
+
+        var result = await branchLookup.FindByIdAsync(Guid.NewGuid());
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task FindByIdAsync_WhenBranchIsInactive_ShouldReturnBranchWithInactiveStatus()
+    {
+        using var factory = new StoreXApiFactory();
+        using var client = factory.CreateClient();
+
+        var branchId = await CreateBranchAsync(client, "BR-LOOKUP-03");
+
+        var statusResponse = await client.PatchAsJsonAsync(
+            $"/api/branches/{branchId}/status",
+            new ChangeBranchStatusRequest(false));
+
+        Assert.Equal(HttpStatusCode.OK, statusResponse.StatusCode);
+
+        using var scope = factory.Services.CreateScope();
+
+        var branchLookup =
+            scope.ServiceProvider.GetRequiredService<IBranchLookup>();
+
+        var result = await branchLookup.FindByIdAsync(branchId);
+
+        Assert.NotNull(result);
+        Assert.Equal(branchId, result.Id);
+        Assert.False(result.IsActive);
+    }
+
     private static async Task<Guid> CreateBranchAsync(
         HttpClient client,
         string code)
